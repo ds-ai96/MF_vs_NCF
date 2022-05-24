@@ -61,12 +61,7 @@ if __name__ == "__main__":
                         help="sample part of negative items for testing")
     parser.add_argument("--out", default=True,
                         help="save model or not")
-    parser.add_argument("--gpu", type=str, default="0",
-                        help="gpu card ID")
     args = parser.parse_args()
-
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
-    cudnn.benchmark = True
 
     # Dataset
     train_data, test_data, user_num, item_num, train_mat = data_utils.load_all()
@@ -78,20 +73,8 @@ if __name__ == "__main__":
     test_loader = data.DataLoader(test_dataset, batch_size=args.test_num+1, shuffle=False, num_workers=0)
 
     # Model
-    if config.model == "NeuMF-pre":
-        assert os.path.exists(config.GMF_model_path), "GMF model이 존재하지 않습니다."
-        assert os.path.exists(config.MLP_model_path), "MLP model이 존재하지 않습니다."
-        GMF_model = torch.load(config.GMF_model_path)
-        MLP_model = torch.load(config.MLP_model_path)
-        
-    else:
-        GMF_model = None
-        MLP_model = None
 
-    model = NCF(user_num, item_num, args.factor_num, args.num_layers,
-                args.dropout, config.model, GMF_model, MLP_model)
-    
-    model.cuda()
+    model = MF(user_num, item_num, args.factor_num, args.num_layers, args.dropout, config.model)
     loss_function = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
