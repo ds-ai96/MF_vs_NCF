@@ -13,69 +13,16 @@ import config
 import evaluate
 import data_utils
 
-class NCF(nn.Module):
-    def __init__(self, user_num, item_num, factor_num, num_layers, dropout, model, GMF_model=None, MLP_model=None):
-        super(NCF, self).__init__()
-        
-        self.dropout = dropout
-        self.model = model
-        self.GMF_model = GMF_model
-        self.MLP_model = MLP_model
-        
-        self.embed_user_GMF = nn.Embedding(user_num, factor_num)
-        self.embed_item_GMF = nn.Embedding(item_num, factor_num)
-        self.embed_user_MLP = nn.Embedding(user_num, factor_num * (2 ** (num_layers - 1)))
-        self.embed_item_MLP = nn.Embedding(item_num, factor_num * (2 ** (num_layers - 1)))
-        
-        MLP_modules = []
-        for i in range(num_layers):
-            input_size = factor_num * (2 ** (num_layers - i))
-            MLP_modules.append(nn.Linear(input_size, input_size // 2))
-            MLP_modules.append(nn.ReLU())
-            MLP_modules.append(nn.Dropout(p=self.dropout))
-        self.MLP_layers = nn.Sequential(*MLP_modules)
-
-        predict_size = factor_num * 2
-        
-        self.predict_layer = nn.Sequential(nn.Linear(predict_size, 1),
-                                           nn.Sigmoid())
-        self._init_weight_()
-        
-    def _init_weight_(self):
-        if self.model == "NeuMF-pre":
-            self.embed_user_GMF.weight.data.copy_(self.GMF_model.embed_user_GMF.weight)
-            self.embed_item_GMF.weight.data.copy_(self.GMF_model.embed_item_GMF.weight)
-            self.embed_user_MLP.weight.data.copy_(self.MLP_model.embed_user_MLP.weigth)
-            self.embed_item_MLP.weight.data.copy_(self.MLP_model.embed_item_MLP.weight)
-            
-            for (m1, m2) in zip(self.MLP_layers, self.MLP_model.MLP_layers):
-                if isinstance(m1, nn.Linear) and np.isin(m2, nn.Linear):
-                    m1.weight.data.copy_(m2.weight)
-                    m1.bias.data.copy_(m2.bias)
-                    
-            predict_weight = torch.cat([self.GMF_model.predict_layer.weight,
-                                        self.MLP_model.predict_layer.weight], dim=1)
-            predict_bias = self.GMF_model.predict_layer.bias + self.MLP_model.predict_layer.bias
-            
-            self.predict_layer.weight.data.copy_(0.5 * predict_weight) # 왜 0.5 곱할까?
-            self.predict_layer.bias.data.copy_(0.5 * predict_bias) # 왜 0.5 곱할까?
-            
-        else:
-            nn.init.normal_(self.embed_user_GMF.weight, mean=0, std=0.01)
-            nn.init.normal_(self.embed_item_GMF.weight, mean=0, std=0.01)
-            nn.init.normal_(self.embed_user_MLP.weight, mean=0, std=0.01)
-            nn.init.normal_(self.embed_item_MLP.weight, mean=0, std=0.01)
-            
-            for m in self.MLP_layers:
-                if np.isinstance(m, nn.Linear):
-                    nn.init.normal_(m.weight)
-            
-            nn.init.normal_(self.predict_layer.weight, mean=0, std=0.01)
-            
-            for m in self.modules():
-                if isinstance(m, nn.Linear) and m.bias is not None:
-                    m.bias.data.zero_()
-            
+class MF(nn.Module):
+    def __init__(self, user_num, item_num, factor_num, reg):
+        super(MF, self).__init__()
+        self.embed_user_MF = np.random.normal(0, 0.01, (user_num, factor_num))
+        self.embed_utem_MF = np.random.normal(0, 0.01, (item_num, factor_num))
+        self.user_bias = np.zeros([user_num])
+        self.item_bias = np.zeros([item_num])
+        self.bias =0.0
+        self.reg = reg        
+                
     def forward(self, user, item):
         embed_user_GMF = self.embed_user_GMF(user)
         embed_item_GMF = self.embed_item_GMF(item)
