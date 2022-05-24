@@ -68,6 +68,7 @@ if __name__ == "__main__":
     cudnn.benchmark = True
 
     # Dataset
+    print("Load dataset phase")
     train_data, test_data, user_num, item_num, train_mat = data_utils.load_all()
 
     train_dataset = data_utils.NCFData(train_data, item_num, train_mat, args.num_ng, True)
@@ -82,6 +83,7 @@ if __name__ == "__main__":
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
     # Training
+    print("Model training phase")
     count, best_hr = 0, 0
 
     for epoch in range(args.epochs):
